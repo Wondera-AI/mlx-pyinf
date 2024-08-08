@@ -1,54 +1,18 @@
-# from hydra.utils import instantiate
 import argparse
 import asyncio
 import json
-import re
-import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
-from re import L
 
 import redis.asyncio as redis
-from async_timeout import timeout
 from pydantic import BaseModel
 
-REQUIRED = "required"
-
-# TODO yaml parsing
-# @dataclass
-# class ServiceConfig:
-#     endpoint: str
-#     memory_request: str
-#     cpu_request: str
-#     memory_limit: str
-#     cpu_limit: str
-#     max_requests: int
-
-# TODO configs
-# active connections
-
-
-STOPWORD = "STOP"
-
-
-class ReqPathParams(BaseModel):
-    required_foo: str
-    optional_foo: str = "foo-default"
-
-
-class ReqQueryParams(BaseModel):
-    bar: str = "bar-default"
-
-
-class ReqBodyParams(BaseModel):
-    baz: str = "baz-default"
-
-
-class Request(BaseModel):
-    path: ReqPathParams
-    query: ReqQueryParams
-    body: ReqBodyParams
-    # header: HeaderParams
+from src.service import (
+    ReqBodyParams,
+    ReqPathParams,  # Response,
+    ReqQueryParams,
+    Request,
+    Service,
+)
 
 
 class Response(BaseModel):
@@ -56,74 +20,29 @@ class Response(BaseModel):
     bar: str
 
 
-class Service:
-    def __init__(self):
-        self.name = "model_A"
-        # self.request =
-        # self.loggger = Logger()
-        # auto capture STDOUT
-        pass
-
-    # TODO http, ws, func, cron
-    # TODO workflow, tasks, flyte
-    # @resources(memory="1Gi", cpu="1")
-    def __call__(self, request: Request) -> Response | None:
-        # NOTE DO WHATEVER\
-
-        # self.service("general_model_a").call()
-
-        # # main()
-        # # self.logger.info()
-
-        # self.logger.info()
-
-        # self.logger.error()
-
-        # promise = self.services("model_B").call(request, data)
-
-        # # garuanteed
-        # embd1 = promise.data.embeddings
-
-        # self.http_req("http://")
-
-        # self.logger.state()
-
-        time.sleep(5)
-
-        return Response(
-            foo="foo-value",
-            bar="bar-value",
-        )
-
-
-# class MultiService:
-#     def __call__(self, request: Request) -> Response | None:
-#         promise = self.services("model_1").call(request)
-
-#         self.services("model_2").call(promise)
+REQUIRED = "required"
+STOPWORD = "stop"
+SERVICE_IN_CHANNEL = "service-in-channel"
+SERVICE_OUT_CHANNEL = "service-out-channel"
 
 
 def handle_message_cpu(service_caller, task_message):
-    # CPU bound part
-    response_channel, task_data = task_message.split(":", 1)
-    result = service_caller(
-        request=Request(
-            path=ReqPathParams(
-                required_foo="required-foo-value",
-                optional_foo="optional-foo-value",
-            ),
-            query=ReqQueryParams(
-                bar="bar-value",
-            ),
-            body=ReqBodyParams(
-                baz="baz-value",
-            ),
-        ),
-    )
-    return response_channel, result.model_dump_json() if result else None
+    # Dynamically create instances of the Pydantic models from the task_message
+    message_data = json.loads(task_message)
+    path_params = ReqPathParams(**message_data["path"])
+    query_params = ReqQueryParams(**message_data["query"])
+    body_params = ReqBodyParams(**message_data["body"])
+
+    # Create the Request instance
+    request = Request(path=path_params, query=query_params, body=body_params)
+
+    # CPU bound part: run the caller function of our service
+    result = service_caller(request=request)
+
+    return result.model_dump_json() if result else None
 
 
-async def handle_message_io(redis_conn, response_channel, result):
+async def handle_message_io(redis_conn, result, response_channel):
     if result:
         await redis_conn.publish(response_channel, result)
 
@@ -143,23 +62,28 @@ async def process_service(channel):
                 if message is not None and message["type"] == "message":
                     print(f"(Reader) Message Received: {message}")
                     task_message = message["data"].decode("utf-8")
+                    request_data, response_channel = task_message.split(">", 1)
 
                     # Offload CPU-bound part to a separate process
-                    response_channel, result = await loop.run_in_executor(
+                    result_future = await loop.run_in_executor(
                         pool,
                         handle_message_cpu,
                         service,
                         task_message,
                     )
 
-                    # Handle I/O-bound part in the event loop
-                    asyncio.create_task(  # noqa: RUF006
-                        handle_message_io(redis_conn, response_channel, result),
-                    )
+                    async def process_result(result_future, response_channel):
+                        result = await result_future
+                        await handle_message_io(redis_conn, result, response_channel)
+
+                    # Schedule the I/O-bound part as a separate coroutine
+                    asyncio.create_task(process_result(result_future, response_channel))  # noqa: RUF006
 
                     if task_message == STOPWORD:
                         print("(Reader) STOP")
                         break
+                else:
+                    print("No message received")
 
                 await asyncio.sleep(0)  # Yield control to the event loop
 
@@ -255,7 +179,7 @@ if __name__ == "__main__":
             "input": Request(
                 path=ReqPathParams(required_foo="foo"),
                 query=ReqQueryParams(),
-                body=ReqBodyParams(),
+                body=ReqBodyParams(required_foo="foo"),
             ),
             "output": Response(
                 foo="foo",
