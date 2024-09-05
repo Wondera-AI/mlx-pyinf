@@ -18,9 +18,30 @@ RUN pip install --upgrade pip && \
     pip install pdm && \
     echo "PDM installed successfully"
 
-# Lock dependencies for different platforms
-RUN pdm lock --platform=manylinux_2_36_aarch64 --python="==3.11.*" && \
-    pdm lock --platform=macos_arm64 --python="==3.11.*" --append
+# # Lock dependencies for multiple platforms:
+# # - x86_64 (the current platform)
+# # - aarch64 (for ARM Linux)
+# # - macOS arm64
+# RUN pdm lock --platform=manylinux_2_36_x86_64 --python="==3.11.*" && \
+#     pdm lock --platform=manylinux_2_36_aarch64 --python="==3.11.*" --append && \
+#     pdm lock --platform=macos_arm64 --python="==3.11.*" --append
+
+# Detect the platform and generate the lockfile only if it doesn't exist
+RUN if [ ! -f "pdm.lock" ]; then \
+    echo "Lockfile not found. Generating pdm.lock for the correct platform..."; \
+    if [ "$(uname -m)" = "x86_64" ]; then \
+        pdm lock --platform=manylinux_2_36_x86_64 --python="==3.11.*"; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+        pdm lock --platform=manylinux_2_36_aarch64 --python="==3.11.*"; \
+    elif [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then \
+        pdm lock --platform=macos_arm64 --python="==3.11.*"; \
+    else \
+        echo "Unsupported platform"; exit 1; \
+    fi; \
+fi
+
+# Install dependencies using PDM and existing or newly generated lockfile
+RUN pdm install --no-lock && echo "Dependencies installed successfully"
 
 # # Install dependencies using PDM
 RUN pdm install && echo "Dependencies installed successfully"
