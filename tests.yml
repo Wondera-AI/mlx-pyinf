@@ -1,0 +1,12 @@
+- 1
+  - input
+    - body: 
+      - mtype: "DNN"
+- 2
+  - input
+    - body:
+      - mtype: "CNN"
+- 2
+  - input
+    - body:
+      - mtype: "whatever"

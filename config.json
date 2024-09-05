@@ -1,0 +1,1 @@
+{"input": {"body": [{"name": "path_image", "dtype": "string", "required": "True"}, {"name": "path_model", "dtype": "string", "required": "False"}]}, "output": [{"name": "foo", "dtype": "string", "required": "True"}, {"name": "bar", "dtype": "string", "required": "True"}]}
