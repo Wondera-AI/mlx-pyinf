@@ -16,12 +16,12 @@ redis-cli -h redis-17902.c322.us-east-1-2.ec2.redns.redis-cloud.com -p 17902 -a 
 
 ## Deploy Service to compute cluster
 ```
-mlx serve deploy "mnist" --memory-limit 512Mib --concurrent-jobs 2 --cpu-limit 0.5
+mlx serve deploy "mnist" --memory-limit 512Mi --concurrent-jobs 2 --cpu-limit 0.5
 ```
 
 ## Test request of Service prediction from the cluster
 ```
-curl -X POST "10.100.78.199/3000/handle_request/mnist" \
+curl -X POST "10.100.78.199/30000/handle_request/mnist" \
 -H "Content-Type: application/json" \
 -d '{
     "path_image": "src/mnist/dummy_data/image_0.png",
