@@ -5,11 +5,11 @@ metadata:
 spec:
   containers:
     - name: test-pod
-      # image: h.nodestaking.com/mlx/mnist:1
-      image: h.nodestaking.com/mlx/mnist:8a0446c5-86e6-427b-b5a5-cc40d6da94b5
-      imagePullPolicy: Always
-  imagePullSecrets:
-    - name: ghcr-secret
+      image: h.nodestaking.com/mlx/mnist:1
+      # image: h.nodestaking.com/mlx/mnist:8a0446c5-86e6-427b-b5a5-cc40d6da94b5
+      # imagePullPolicy: Always
+  # imagePullSecrets:
+  #   - name: ghcr-secret
       # env:
       #   - name: PDM_USE_VENV
       #     value: "true"
