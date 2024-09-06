@@ -14,7 +14,7 @@ ENV PDM_VENV_IN_PROJECT=true
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD pdm install --prod --frozen-lock && pdm run main.py
+CMD pdm install --prod --frozen-lock && echo "install successful" && pdm run main.py
 
 # podman buildx build --platform linux/amd64,linux/arm64 -t h.nodestaking.com/mlx/mnist:1 .
 # podman buildx build --platform linux/amd64,linux/arm64 -t h.nodestaking.com/mlx/mnist:1 --load .

@@ -246,6 +246,7 @@ if __name__ == "__main__":
         service_in_channel = os.getenv("service-in-channel")
         # service_in_channel = "py_service-a3_3-input"
         # service_in_channel = "test_channel"
+        print(f"Service in channel: {service_in_channel}")
         if not service_in_channel:
             # raise ValueError("Environment variable 'service-in-channel' is not set")
             service_in_channel = "test-channel"
