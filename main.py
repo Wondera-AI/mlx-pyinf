@@ -7,6 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
 
 import redis.asyncio as redis
+import torch
 from pydantic import BaseModel, ValidationError
 
 from src.service import DeploymentArgs, Request, Service
@@ -242,6 +243,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f"Build: {args.build}")
+    print(f"CUDA available: {torch.cuda.is_available()}")
     if not args.build:
         service_in_channel = os.getenv("service-in-channel")
         # service_in_channel = "py_service-a3_3-input"
