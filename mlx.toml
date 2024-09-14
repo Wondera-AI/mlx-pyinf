@@ -1,0 +1,17 @@
+service = "mnist"
+stage = "dev" # ["dev", "prod"]
+
+[resources]
+cpu_limit = 1
+gpu_limit = 1
+memory_limit = 2048
+concurrent_jobs = 2
+arch = "amd64" # ["amd64", "arm64"]
+
+[test.foo_test]
+path_image = "src/mnist/dummy_data/image_0.png"
+path_model = "src/mnist/pretrained/test_mnist.pt"
+
+[test.bar_test]
+path_image = "src/mnist/dummy_data/image_1.png"
+path_model = "src/mnist/pretrained/test_mnist.pt"

@@ -1,30 +1,67 @@
 # MNIST Demo of MLX
 
-## Install the MLX client
-```
+## Install/Update the MLX client
+```bash
 curl -sSL https://raw.githubusercontent.com/Wondera-AI/mlx-client/main/install.sh | bash
 ```
 
-## Test Service locally for now using
+## Test Service locally using
+```bash
+mlx serve run               # to run all tests
+
+mlx serve run test_foo      # to run specific test
 ```
-pdm run main
-```
-To start the service and then use this to call it:
-```
-redis-cli -h redis-17902.c322.us-east-1-2.ec2.redns.redis-cloud.com -p 17902 -a "MkiTVpOWFVLGLgJ7ptZ29dY80zER4cvR" PUBLISH "test-channel" "{\"request_data\":\"{\\\"body\\\":{\\\"path_image\\\":\\\"src/mnist/dummy_data/image_0.png\\\",\\\"optional_smoothing\\\":20}}\",\"publish_channel\":\"test-channel\",\"response_channel\":\"py_service:a3-2:output\",\"log_key\":\"test_foo\"}"
+
+Define these tests in the mlx.toml
+
+```toml
+[test.foo_test]
+path_image = "src/mnist/dummy_data/image_0.png"
+path_model = "src/mnist/pretrained/test_mnist.pt"
 ```
 
 ## Deploy Service to compute cluster
-```
-mlx serve deploy "mnist" --memory-limit 512Mi --concurrent-jobs 2 --cpu-limit 0.5
+
+Check and adjust configuration in **mlx.toml** as required
+- name the service
+- deploy to "dev" or "prod" compute
+- configure resources
+
+Then deploy it
+
+```bash
+mlx serve deploy
 ```
 
-## Test request of Service prediction from the cluster
-```
-curl -X POST "10.100.78.199/30000/handle_request/mnist" \
+## General Call the Service endpoint
+```bash
+curl -X POST "3.132.162.86:30000/handle_request/mnist" \
 -H "Content-Type: application/json" \
 -d '{
     "path_image": "src/mnist/dummy_data/image_0.png",
-    "optional_smoothing": 20
+    "path_model": "src/mnist/pretrained/test_mnist.pt"
 }'
+```
+Notice
+- the service name and data you pass
+- the data for your service
+- the return is synchronous with a Job_ID
+
+## (TEMP) Jobs and logs observability
+```txt
+http://3.132.162.86:30000/logs/mnist/e5e73782-e634-4bed-8c4b-0b6f5f41dae1
+```
+Notice
+- use /[JobID]
+
+## (N/A) Jobs and logs observability
+```bash 
+mlx serve jobs mnist            # view jobs for IDs
+
+mlx serve logs mnist [Job_ID]   # view job results
+```
+
+## (N/A) Test Call the Service endpoint
+```
+mlx serve run test_foo --call
 ```

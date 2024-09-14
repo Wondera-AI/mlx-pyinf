@@ -4,13 +4,13 @@ import json
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import contextmanager
 
 import redis.asyncio as redis
 import torch
 from pydantic import BaseModel, ValidationError
 
-from src.service import DeploymentArgs, Request, Service
+from src.service import Request, RunArgs, Service
 
 STOPWORD = "stop"
 SERVICE_IN_CHANNEL = "service-in-channel"
@@ -25,7 +25,6 @@ CONNECTION_DETAILS = {
 class RedisWriter:
     def __init__(self, log_key):
         self.redis_client = redis.Redis(**CONNECTION_DETAILS)
-        print(f"RedisWriter Log Key: {log_key}")
         self.log_key = log_key
         self.original_stdout = sys.stdout
         self.encoding = sys.stdout.encoding
@@ -40,13 +39,6 @@ class RedisWriter:
         """)
 
     def write(self, message):
-        # self.original_stdout.write(message)
-
-        # if message.strip():
-        #     # print(f"Appending to {self.log_key}")
-        #     asyncio.create_task(  # noqa: RUF006
-        #         self.append_script(keys=[self.log_key], args=["logs", message + "\n"]),
-        #     )
         if message.strip():
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -103,7 +95,6 @@ async def run_service(channel_name: str):
                 if message and message["type"] == "message":
                     task_message = message["data"].decode("utf-8")
                     if task_message == STOPWORD:
-                        print("STOP")
                         break
 
                     handle_task(task_message, service, pool)
@@ -150,28 +141,8 @@ def handle_task(task_message, service, pool):
 def handle_message_cpu(service_caller, request_data, log_key):  # noqa: PLR0911
     with redirect_stdout(log_key):
         try:
-            # request_params = {}
-            # for fname, finfo in Request.model_fields.items():
-            #     if fname not in request_data:
-            #         return f"Missing field: {fname}"
-            #     if request_data[fname] is None:
-            #         return f"Field {fname} cannot be None"
-
-            #     # Extract the parameter data and class type
-            #     param_data = request_data[fname]
-            #     param_cls = finfo.annotation
-
-            #     # Safely instantiate the parameter class
-            #     if param_cls is not None:
-            #         if isinstance(param_data, dict):
-            #             request_params[fname] = param_cls(**param_data)
-            #         else:
-            #             return f"Field {fname} is expected to be a dictionary, but got {type(param_data).__name__}"
-            #     else:
-            #         return f"Parameter class for field '{fname}' is None"
-
             request = Request(**request_data)
-            result = service_caller(request=request, args=DeploymentArgs())
+            result = service_caller(request=request, args=RunArgs())
 
             if hasattr(result, "model_dump_json"):
                 return result.model_dump_json()
@@ -184,15 +155,6 @@ def handle_message_cpu(service_caller, request_data, log_key):  # noqa: PLR0911
 
         except Exception as e:
             return f"Unexpected error: {str(e)}"
-
-
-# async def publish_result(result_future, response_channel):
-#     result = await result_future
-#     print(f"Result: {result}")
-#     if result:
-#         print(f"Publishing to {response_channel} with result {result}")
-#         redis_conn = redis.Redis(**CONNECTION_DETAILS)
-#         await redis_conn.publish(response_channel, result)
 
 
 # TODO maybe deprecating this as the return type is not necessary to validate
@@ -242,17 +204,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"Build: {args.build}")
-    print(f"CUDA available: {torch.cuda.is_available()}")
+    print(f"Build Schema: {False if args.build == 0 else True}")
     if not args.build:
         service_in_channel = os.getenv("service-in-channel")
-        # service_in_channel = "py_service-a3_3-input"
-        # service_in_channel = "test_channel"
+
         print(f"Service in channel: {service_in_channel}")
         if not service_in_channel:
-            # raise ValueError("Environment variable 'service-in-channel' is not set")
             service_in_channel = "test-channel"
 
+        print(f"CUDA available: {torch.cuda.is_available()}")
         asyncio.run(run_service(service_in_channel))
 
     else:
@@ -267,6 +227,6 @@ if __name__ == "__main__":
 
         print(f"Py Schema: {data}")
 
-        with open("config.json", "w") as file:
+        with open("schema.json", "w") as file:
             file.write(json.dumps(data))
             file.close()

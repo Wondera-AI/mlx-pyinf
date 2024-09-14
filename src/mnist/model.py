@@ -31,6 +31,8 @@ class Net(nn.Module):
 
 def load_model(model_path, device):
     model = Net().to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(
+        torch.load(model_path, map_location=device, weights_only=True)
+    )
     model.eval()
     return model

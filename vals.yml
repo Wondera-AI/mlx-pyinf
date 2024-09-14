@@ -5,10 +5,12 @@ metadata:
 spec:
   containers:
     - name: test-pod
-      image: h.nodestaking.com/mlx/mnist:1
+      image: h.nodestaking.com/mlx/mnist:fc517390-6af5-4a1d-a00b-b0a459d9990a
       imagePullPolicy: Always
   imagePullSecrets:
     - name: ghcr-secret
+
+
       # env:
       #   - name: PYTHONUNBUFFERED
       #     value: "1" 
